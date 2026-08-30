@@ -9,4 +9,4 @@ This folder contains the hardware-related development for the SEER Smart School 
 
 ## Status
 
-In Progress
+completed ✅
