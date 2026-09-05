@@ -24,7 +24,7 @@ All our tasks initially start with the status **❌ No** and we will be updated 
 |---|---|---|---|---|---|---|
 | **Week 2** | Aug 30, 2026 | Sunday | **Abdulbaset** | Set up the ESP32 development environment and test hardware communication. | ESP32, Arduino IDE | completed ✅ |
 | **Week 2** | Sep 1, 2026 | Tuesday | **Hamad** | Create the Flutter project and basic structure for the Parent and Driver applications. | Flutter, Dart | completed ✅|
-| **Week 2** | Sep 3, 2026 | Thursday | **Ali** | Create the Firebase project and prepare the Admin Dashboard project. | Firebase, Flutter Web | ❌ No |
+| **Week 2** | Sep 3, 2026 | Thursday | **Ali** | Create the Firebase project and prepare the Admin Dashboard project. | Firebase, Flutter Web | completed ✅ |
 | **Week 3** | Sep 6, 2026 | Sunday | **Abdulbaset** | Test the RFID/NFC reader with ESP32 and read student card or bracelet UID values. | ESP32, MFRC522 RFID/NFC | ❌ No |
 | **Week 3** | Sep 8, 2026 | Tuesday | **Hamad** | Develop authentication screens and role-based navigation for Parent and Driver users. | Flutter, Firebase Authentication | ❌ No |
 | **Week 3** | Sep 10, 2026 | Thursday | **Ali** | Design the database structure for users, students, buses, trips, and scan events. | Firebase, Cloud Firestore | ❌ No |
