@@ -1,5 +1,5 @@
 # SEER Smart School Bus System
-Good evening
+
 SEER is a Smart School Bus Safety and Tracking System designed to improve student transportation safety through RFID/NFC attendance, GPS bus tracking, real-time notifications, and a Tally-Based Safety Protocol.
 
 ## Development Process
@@ -26,7 +26,7 @@ All our tasks initially start with the status **❌ No** and we will be updated 
 | **Week 2** | Sep 1, 2026 | Tuesday | **Hamad** | Create the Flutter project and basic structure for the Parent and Driver applications. | Flutter, Dart | completed ✅|
 | **Week 2** | Sep 3, 2026 | Thursday | **Ali** | Create the Firebase project and prepare the Admin Dashboard project. | Firebase, Flutter Web | completed ✅ |
 | **Week 3** | Sep 6, 2026 | Sunday | **Abdulbaset** | Test the RFID/NFC reader with ESP32 and read student card or bracelet UID values. | ESP32, MFRC522 RFID/NFC | 👨🏻‍💻✅ completed ☕👨🏻‍💻 |
-| **Week 3** | Sep 8, 2026 | Tuesday | **Hamad** | Develop authentication screens and role-based navigation for Parent and Driver users. | Flutter, Firebase Authentication | ❌ No |
+| **Week 3** | Sep 8, 2026 | Tuesday | **Hamad** | Develop authentication screens and role-based navigation for Parent and Driver users. | Flutter, Firebase Authentication | Completed ✅ |
 | **Week 3** | Sep 10, 2026 | Thursday | **Ali** | Design the database structure for users, students, buses, trips, and scan events. | Firebase, Cloud Firestore | ❌ No |
 | **Week 4** | Sep 13, 2026 | Sunday | **Abdulbaset** | Connect RFID/NFC UID values to student identification records. | ESP32, RFID/NFC, Firebase | ❌ No |
 | **Week 4** | Sep 15, 2026 | Tuesday | **Hamad** | Develop the Parent App student list and child information screens. | Flutter, Firebase | ❌ No |
