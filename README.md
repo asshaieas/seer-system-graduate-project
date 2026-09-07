@@ -1,5 +1,5 @@
 # SEER Smart School Bus System
-
+Good evening
 SEER is a Smart School Bus Safety and Tracking System designed to improve student transportation safety through RFID/NFC attendance, GPS bus tracking, real-time notifications, and a Tally-Based Safety Protocol.
 
 ## Development Process
