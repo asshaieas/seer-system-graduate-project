@@ -28,7 +28,7 @@ All our tasks initially start with the status **❌ No** and we will be updated 
 | **Week 3** | Sep 6, 2026 | Sunday | **Abdulbaset** | Test the RFID/NFC reader with ESP32 and read student card or bracelet UID values. | ESP32, MFRC522 RFID/NFC | 👨🏻‍💻✅ completed ☕👨🏻‍💻 |
 | **Week 3** | Sep 8, 2026 | Tuesday | **Hamad** | Develop authentication screens and role-based navigation for Parent and Driver users. | Flutter, Firebase Authentication | Completed ✅ |
 | **Week 3** | Sep 10, 2026 | Thursday | **Ali** | Design the database structure for users, students, buses, trips, and scan events. | Firebase, Cloud Firestore | Completed ✅ |
-| **Week 4** | Sep 13, 2026 | Sunday | **Abdulbaset** | Connect RFID/NFC UID values to student identification records. | ESP32, RFID/NFC, Firebase | ❌ No |
+| **Week 4** | Sep 13, 2026 | Sunday | **Abdulbaset** | Connect RFID/NFC UID values to student identification records. | ESP32, RFID/NFC, Firebase | Skipped 🏂🏻 |
 | **Week 4** | Sep 15, 2026 | Tuesday | **Hamad** | Develop the Parent App student list and child information screens. | Flutter, Firebase | ❌ No |
 | **Week 4** | Sep 17, 2026 | Thursday | **Ali** | Develop Admin Dashboard management features for schools, students, drivers, and buses. | Flutter Web, Firebase | ❌ No |
 | **Week 5** | Sep 20, 2026 | Sunday | **Abdulbaset** | Integrate RFID/NFC scanning with the backend and store boarding and scan events. | ESP32, Firebase API | ❌ No |
