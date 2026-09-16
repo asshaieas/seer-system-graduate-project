@@ -1,12 +1,16 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import 'screens/auth/login_screen.dart';
+import 'firebase_options.dart';
+import 'screens/auth/login_screen_ali.dart';
+
+// import 'screens/auth/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const SeerApp());
 }
@@ -17,17 +21,57 @@ class SeerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SEER',
+      title: 'سير',
       debugShowCheckedModeBanner: false,
+
       theme: ThemeData(
-        fontFamily: 'Canva Sans',
+        useMaterial3: true,
+
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFD6A84F),
           brightness: Brightness.dark,
         ),
-        useMaterial3: true,
+
+        textTheme: GoogleFonts.alexandriaTextTheme(ThemeData.dark().textTheme),
+
+        primaryTextTheme: GoogleFonts.alexandriaTextTheme(
+          ThemeData.dark().primaryTextTheme,
+        ),
+
+        inputDecorationTheme: InputDecorationTheme(
+          labelStyle: GoogleFonts.alexandria(),
+          hintStyle: GoogleFonts.alexandria(),
+        ),
+
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ButtonStyle(
+            textStyle: WidgetStatePropertyAll(
+              GoogleFonts.alexandria(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: ButtonStyle(
+            textStyle: WidgetStatePropertyAll(
+              GoogleFonts.alexandria(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+
+        textButtonTheme: TextButtonThemeData(
+          style: ButtonStyle(
+            textStyle: WidgetStatePropertyAll(
+              GoogleFonts.alexandria(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
       ),
-      home: const LoginScreen(),
+
+      home: const LoginScreenAli(),
+
+      // للرجوع للواجهة الأصلية:
+      // home: const LoginScreen(),
     );
   }
 }
