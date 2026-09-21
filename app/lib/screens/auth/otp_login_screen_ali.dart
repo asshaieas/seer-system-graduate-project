@@ -295,10 +295,18 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
     };
   }
 
-  String get _maskedPhone {
+  String get _fullPhone {
     final digits = widget.phoneNumber.replaceAll(RegExp(r'\D'), '');
-    final ending = digits.length >= 2 ? digits.substring(digits.length - 2) : '';
-    return '05••• ••$ending';
+    final local = digits.startsWith('966')
+        ? '0${digits.substring(3)}'
+        : digits.startsWith('5')
+            ? '0$digits'
+            : digits;
+
+    if (local.length == 10) {
+      return '${local.substring(0, 3)} ${local.substring(3, 6)} ${local.substring(6)}';
+    }
+    return local;
   }
 
   String get _timerText {
@@ -361,7 +369,7 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'أرسلنا الرمز إلى',
+                  'أرسلنا كود التحقق إلى رقم',
                   style: TextStyle(
                     color: AuthColors.ink,
                     fontSize: 12,
@@ -369,7 +377,7 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
                   ),
                 ),
                 Text(
-                  _maskedPhone,
+                  _fullPhone,
                   textDirection: TextDirection.ltr,
                   style: const TextStyle(
                     color: AuthColors.ink,

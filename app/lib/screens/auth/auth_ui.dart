@@ -29,7 +29,6 @@ class AuthShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final heroHeight = compact ? 225.0 : 290.0;
     final panelTop = compact ? 205.0 : 257.0;
-    final panelHeight = compact ? 635.0 : 583.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -40,13 +39,18 @@ class AuthShell extends StatelessWidget {
           backgroundColor: AuthColors.page,
           body: LayoutBuilder(
             builder: (context, constraints) {
+              final canvasHeight = constraints.maxHeight > 852
+                  ? constraints.maxHeight
+                  : 852.0;
+              final panelHeight = canvasHeight - panelTop - 12;
+
               return Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 393),
+                  constraints: const BoxConstraints(maxWidth: 600),
                   child: SingleChildScrollView(
                     child: SizedBox(
-                      height: 852,
-                      width: constraints.maxWidth.clamp(0.0, 393.0).toDouble(),
+                      height: canvasHeight,
+                      width: constraints.maxWidth.clamp(0.0, 600.0).toDouble(),
                       child: Stack(
                         children: [
                           Positioned.fill(
@@ -141,10 +145,11 @@ class AuthLanguageButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(17),
           onTap: onPressed ??
-              () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('ستتوفر اللغة الإنجليزية في إصدار لاحق'),
-                    ),
+              () => showAuthInformationDialog(
+                    context,
+                    title: 'اللغة الإنجليزية غير متاحة حاليًا',
+                    message:
+                        'واجهة اللغة الإنجليزية غير متاحة حاليًا في النسخة التجريبية من سير، وستتوفر في إصدار لاحق.',
                   ),
           child: const Center(
             child: Text(
@@ -385,36 +390,51 @@ Future<void> showAuthInformationDialog(
     context: context,
     builder: (dialogContext) => Directionality(
       textDirection: TextDirection.rtl,
-      child: AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: Text(
-          title,
-          textAlign: TextAlign.right,
-          style: const TextStyle(
-            color: AuthColors.ink,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Text(
-          message,
-          textAlign: TextAlign.right,
-          style: const TextStyle(
-            color: AuthColors.secondary,
-            fontSize: 12,
-            height: 1.8,
-          ),
-        ),
-        actions: [
-          SizedBox(
-            width: 260,
-            child: AuthPrimaryButton(
-              label: 'حسنًا',
-              onPressed: () => Navigator.of(dialogContext).pop(),
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+        backgroundColor: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: AuthColors.ink,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    message,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: AuthColors.secondary,
+                      fontSize: 12,
+                      height: 1.8,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  AuthPrimaryButton(
+                    label: 'حسنًا',
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     ),
   );
