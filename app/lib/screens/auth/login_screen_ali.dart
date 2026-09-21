@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import 'auth_access.dart';
+import 'auth_ui.dart';
 import 'email_login_screen_ali.dart';
 import 'otp_login_screen_ali.dart';
 
@@ -13,720 +16,319 @@ class LoginScreenAli extends StatefulWidget {
 }
 
 class _LoginScreenAliState extends State<LoginScreenAli> {
-  final TextEditingController _phoneController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _phoneFocus = FocusNode();
 
   bool _isLoading = false;
-
-  static const Color _background = Color(0xFF122033);
-  static const Color _gold = Color(0xFFC7A464);
-  static const Color _blue = Color(0xFF3E6F9E);
-  static const Color _green = Color(0xFF3E8064);
-  static const Color _secondaryText = Color(0xFF5C718A);
-  static const Color _navy = Color(0xFF0B1320);
-  static const Color _border = Color(0xFFD5CEC2);
-  static const Color _fieldBorder = Color(0xFFE7E2D9);
-
-  // =========================================================
-  // PHONE LOGIN
-  // =========================================================
+  String? _inlineError;
+  _PhoneErrorKind? _errorKind;
 
   Future<void> _sendVerificationCode() async {
-    String phone = _phoneController.text.trim();
+    final localPhone = _normalizeLocalPhone(_phoneController.text);
 
-    if (phone.isEmpty) {
-      _showMessage('يرجى إدخال رقم الجوال');
+    if (!RegExp(r'^05\d{8}$').hasMatch(localPhone)) {
+      setState(() {
+        _inlineError = 'رقم الجوال غير صحيح. أدخل ١٠ أرقام تبدأ بـ 05.';
+        _errorKind = _PhoneErrorKind.invalid;
+      });
+      _phoneFocus.requestFocus();
       return;
     }
 
-    phone = _normalizeSaudiPhone(phone);
-
-    if (!_isValidSaudiPhone(phone)) {
-      _showMessage('يرجى إدخال رقم جوال سعودي صحيح');
-      return;
-    }
-
+    final phone = '+966${localPhone.substring(1)}';
     FocusScope.of(context).unfocus();
-
     setState(() {
       _isLoading = true;
+      _inlineError = null;
+      _errorKind = null;
     });
 
     try {
       if (kIsWeb) {
-        await _sendCodeOnWeb(phone);
+        final confirmation =
+            await FirebaseAuth.instance.signInWithPhoneNumber(phone);
+        if (!mounted) return;
+        await _openOtp(phone, confirmationResult: confirmation);
       } else {
-        await _sendCodeOnMobile(phone);
+        await FirebaseAuth.instance.verifyPhoneNumber(
+          phoneNumber: phone,
+          timeout: const Duration(seconds: 60),
+          verificationCompleted: (credential) async {
+            try {
+              final result =
+                  await FirebaseAuth.instance.signInWithCredential(credential);
+              final user = result.user;
+              if (user == null || !mounted) return;
+              final failure = await openHomeForAuthenticatedUser(context, user);
+              if (failure != null && mounted) _setAccessFailure(failure);
+            } on FirebaseAuthException catch (error) {
+              if (mounted) _setFirebaseError(error);
+            }
+          },
+          verificationFailed: (error) {
+            if (mounted) _setFirebaseError(error);
+          },
+          codeSent: (verificationId, resendToken) async {
+            if (!mounted) return;
+            await _openOtp(
+              phone,
+              verificationId: verificationId,
+              resendToken: resendToken,
+            );
+          },
+          codeAutoRetrievalTimeout: (_) {},
+        );
       }
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      debugPrint('Firebase Auth Error Code: ${e.code}');
-      debugPrint('Firebase Auth Error Message: ${e.message}');
-
-      _showMessage(_firebaseMessage(e));
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      debugPrint('Unexpected Phone Auth Error: $e');
-
-      _showMessage('حدث خطأ غير متوقع أثناء إرسال رمز التحقق');
+    } on FirebaseAuthException catch (error) {
+      if (mounted) _setFirebaseError(error);
+    } catch (error) {
+      debugPrint('Phone sign-in error: $error');
+      if (mounted) {
+        setState(() {
+          _inlineError =
+              'تعذر إرسال رمز التحقق حاليًا. تحقق من الاتصال وحاول مجددًا.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  String _normalizeSaudiPhone(String phone) {
-    phone = phone
-        .replaceAll(' ', '')
-        .replaceAll('-', '')
-        .replaceAll('(', '')
-        .replaceAll(')', '');
-
-    if (phone.startsWith('00966')) {
-      return '+966${phone.substring(5)}';
-    }
-
-    if (phone.startsWith('966')) {
-      return '+$phone';
-    }
-
-    if (phone.startsWith('05')) {
-      return '+966${phone.substring(1)}';
-    }
-
-    if (phone.startsWith('5')) {
-      return '+966$phone';
-    }
-
-    return phone;
-  }
-
-  bool _isValidSaudiPhone(String phone) {
-    final regex = RegExp(r'^\+9665\d{8}$');
-    return regex.hasMatch(phone);
-  }
-
-  // =========================================================
-  // WEB OTP
-  // =========================================================
-
-  Future<void> _sendCodeOnWeb(String phone) async {
-    final confirmationResult = await FirebaseAuth.instance
-        .signInWithPhoneNumber(phone);
-
+  Future<void> _openOtp(
+    String phone, {
+    String? verificationId,
+    int? resendToken,
+    ConfirmationResult? confirmationResult,
+  }) async {
     if (!mounted) return;
+    setState(() => _isLoading = false);
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    Navigator.push(
-      context,
+    final result = await Navigator.of(context).push<OtpLoginResult>(
       MaterialPageRoute(
         builder: (_) => OtpLoginScreenAli(
           phoneNumber: phone,
+          verificationId: verificationId,
+          resendToken: resendToken,
           confirmationResult: confirmationResult,
         ),
       ),
     );
-  }
 
-  // =========================================================
-  // ANDROID / IOS OTP
-  // =========================================================
-
-  Future<void> _sendCodeOnMobile(String phone) async {
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: phone,
-      timeout: const Duration(seconds: 60),
-
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        try {
-          final result = await FirebaseAuth.instance.signInWithCredential(
-            credential,
-          );
-
-          if (!mounted) return;
-
-          setState(() {
-            _isLoading = false;
-          });
-
-          if (result.user != null) {
-            /*
-             * في بعض أجهزة Android قد يتحقق Firebase
-             * تلقائيًا بدون أن يحتاج المستخدم كتابة OTP.
-             *
-             * في الوقت الحالي نوضح للمستخدم نجاح العملية.
-             * شاشة OTP نفسها تتولى قراءة role عند الإدخال اليدوي.
-             */
-            _showMessage('تم التحقق من رقم الجوال تلقائيًا');
-          }
-        } on FirebaseAuthException catch (e) {
-          if (!mounted) return;
-
-          setState(() {
-            _isLoading = false;
-          });
-
-          _showMessage(_firebaseMessage(e));
-        } catch (e) {
-          if (!mounted) return;
-
-          setState(() {
-            _isLoading = false;
-          });
-
-          debugPrint('Automatic Verification Error: $e');
-
-          _showMessage('حدث خطأ أثناء التحقق التلقائي');
-        }
-      },
-
-      verificationFailed: (FirebaseAuthException e) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoading = false;
-        });
-
-        debugPrint('Phone Verification Failed: ${e.code}');
-
-        debugPrint('Phone Verification Message: ${e.message}');
-
-        _showMessage(_firebaseMessage(e));
-      },
-
-      codeSent: (String verificationId, int? resendToken) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoading = false;
-        });
-
-        debugPrint('OTP Code Sent');
-        debugPrint('Phone: $phone');
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OtpLoginScreenAli(
-              phoneNumber: phone,
-              verificationId: verificationId,
-              resendToken: resendToken,
-            ),
-          ),
-        );
-      },
-
-      codeAutoRetrievalTimeout: (String verificationId) {
-        debugPrint('OTP Auto Retrieval Timeout');
-
-        debugPrint('Verification ID: $verificationId');
-      },
-    );
-  }
-
-  // =========================================================
-  // FIREBASE ERRORS
-  // =========================================================
-
-  String _firebaseMessage(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-phone-number':
-        return 'رقم الجوال غير صحيح';
-
-      case 'too-many-requests':
-        return 'تم إجراء محاولات كثيرة، حاول لاحقًا';
-
-      case 'quota-exceeded':
-        return 'تم تجاوز حد رسائل التحقق، حاول لاحقًا';
-
-      case 'operation-not-allowed':
-        return 'تسجيل الدخول برقم الجوال غير مفعّل في Firebase';
-
-      case 'network-request-failed':
-        return 'تعذر الاتصال بالشبكة، تحقق من الإنترنت';
-
-      case 'captcha-check-failed':
-        return 'فشل التحقق الأمني، حاول مرة أخرى';
-
-      case 'invalid-app-credential':
-        return 'إعدادات التحقق الخاصة بالتطبيق غير مكتملة';
-
-      case 'app-not-authorized':
-        return 'هذا التطبيق غير مصرح له باستخدام تسجيل الدخول بالجوال';
-
-      case 'web-context-cancelled':
-        return 'تم إلغاء عملية التحقق';
-
-      case 'web-context-already-presented':
-        return 'عملية التحقق مفتوحة بالفعل';
-
-      default:
-        return e.message ?? 'تعذر إرسال رمز التحقق';
+    if (!mounted || result == null) return;
+    switch (result) {
+      case OtpLoginResult.profileNotFound:
+        _setAccessFailure(AuthAccessFailure.profileNotFound);
+        break;
+      case OtpLoginResult.unsupportedRole:
+        _setAccessFailure(AuthAccessFailure.unsupportedRole);
+        break;
+      case OtpLoginResult.permissionDenied:
+        _setAccessFailure(AuthAccessFailure.permissionDenied);
+        break;
+      case OtpLoginResult.unavailable:
+        _setAccessFailure(AuthAccessFailure.unavailable);
+        break;
     }
   }
 
-  // =========================================================
-  // EMAIL LOGIN
-  // =========================================================
-
-  void _openEmailLogin() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const EmailLoginScreenAli()),
-    );
+  void _setAccessFailure(AuthAccessFailure failure) {
+    setState(() {
+      _inlineError = authAccessMessage(failure);
+      _errorKind = switch (failure) {
+        AuthAccessFailure.profileNotFound => _PhoneErrorKind.unlinked,
+        AuthAccessFailure.unsupportedRole => _PhoneErrorKind.wrongRole,
+        _ => _PhoneErrorKind.other,
+      };
+      _isLoading = false;
+    });
   }
 
-  // =========================================================
-  // NAFATH
-  // =========================================================
+  void _setFirebaseError(FirebaseAuthException error) {
+    final message = switch (error.code) {
+      'invalid-phone-number' =>
+        'رقم الجوال غير صحيح. أدخل ١٠ أرقام تبدأ بـ 05.',
+      'too-many-requests' =>
+        'توجد محاولات كثيرة لهذا الرقم. انتظر قليلًا ثم حاول مجددًا.',
+      'quota-exceeded' =>
+        'تعذر إرسال رمز جديد حاليًا. حاول مرة أخرى لاحقًا.',
+      'operation-not-allowed' =>
+        'خدمة الدخول برقم الجوال غير مفعّلة حاليًا.',
+      'network-request-failed' =>
+        'تعذر الاتصال بالشبكة. تحقق من الإنترنت وحاول مجددًا.',
+      'captcha-check-failed' || 'invalid-app-credential' =>
+        'فشل التحقق الأمني. أعد المحاولة مرة أخرى.',
+      _ => 'تعذر إرسال رمز التحقق حاليًا. حاول مجددًا.',
+    };
 
-  void _showNafathMessage() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: const Color(0xFF192A40),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-            title: const Text(
-              'الدخول عبر نفاذ',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            content: const Text(
-              'خدمة التسجيل والدخول عبر نفاذ غير متوفرة حاليًا في النسخة التجريبية من سَير وستتوفر في إصدار لاحق.',
-              style: TextStyle(color: Color(0xFFB3C0D0), height: 1.7),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                },
-                child: const Text(
-                  'حسنًا',
-                  style: TextStyle(color: _gold, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    setState(() {
+      _inlineError = message;
+      _errorKind = error.code == 'invalid-phone-number'
+          ? _PhoneErrorKind.invalid
+          : _PhoneErrorKind.other;
+      _isLoading = false;
+    });
   }
 
-  // =========================================================
-  // LANGUAGE
-  // =========================================================
-
-  void _showLanguageMessage() {
-    _showMessage('سيتم إضافة اللغة الإنجليزية لاحقًا');
+  String _normalizeLocalPhone(String value) {
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    const latin = '0123456789';
+    var normalized = value;
+    for (var index = 0; index < arabic.length; index++) {
+      normalized = normalized.replaceAll(arabic[index], latin[index]);
+    }
+    normalized = normalized.replaceAll(RegExp(r'\D'), '');
+    if (normalized.startsWith('00966')) normalized = normalized.substring(5);
+    if (normalized.startsWith('966')) normalized = normalized.substring(3);
+    if (normalized.startsWith('5')) normalized = '0$normalized';
+    return normalized;
   }
 
-  // =========================================================
-  // MESSAGE
-  // =========================================================
+  String get _buttonLabel => switch (_errorKind) {
+        _PhoneErrorKind.invalid => 'تصحيح رقم الجوال',
+        _PhoneErrorKind.unlinked => 'استخدام رقم جوال آخر',
+        _PhoneErrorKind.wrongRole => 'استخدام حساب آخر',
+        _ => 'إرسال رمز التحقق',
+      };
 
-  void _showMessage(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        content: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Text(message),
-        ),
-      ),
-    );
+  void _onPrimaryPressed() {
+    if (_errorKind == _PhoneErrorKind.invalid) {
+      setState(() => _inlineError = null);
+      _phoneFocus.requestFocus();
+      return;
+    }
+    _sendVerificationCode();
   }
-
-  // =========================================================
-  // DISPOSE
-  // =========================================================
 
   @override
   void dispose() {
     _phoneController.dispose();
+    _phoneFocus.dispose();
     super.dispose();
   }
 
-  // =========================================================
-  // UI
-  // =========================================================
-
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _background,
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 26),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 14),
-
-                        _buildTopBar(),
-
-                        const SizedBox(height: 68),
-
-                        _buildLogo(),
-
-                        const SizedBox(height: 67),
-
-                        _buildWelcomeSection(),
-
-                        const SizedBox(height: 24),
-
-                        _buildPhoneField(),
-
-                        const SizedBox(height: 30),
-
-                        _buildSendOtpButton(),
-
-                        const SizedBox(height: 24),
-
-                        _buildEmailLoginButton(),
-
-                        const SizedBox(height: 18),
-
-                        _buildDivider(),
-
-                        const SizedBox(height: 18),
-
-                        _buildNafathButton(),
-
-                        const SizedBox(height: 13),
-
-                        _buildTerms(),
-
-                        const SizedBox(height: 28),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // =========================================================
-  // TOP BAR
-  // =========================================================
-
-  Widget _buildTopBar() {
-    return SizedBox(
-      height: 33,
-      child: Row(
-        textDirection: TextDirection.ltr,
+    return AuthShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 33,
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: _showLanguageMessage,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                  child: Center(
-                    child: Text(
-                      'EN',
-                      style: TextStyle(
-                        color: _navy,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+          const Text(
+            'مرحبًا بك',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: AuthColors.ink,
+              fontSize: 25,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'أدخل رقم جوالك للوصول إلى حسابك بأمان',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: AuthColors.secondary, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'رقم الجوال',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: AuthColors.ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          AuthTextField(
+            controller: _phoneController,
+            focusNode: _phoneFocus,
+            hintText: '05X XXX XXXX',
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
+            hasError: _inlineError != null,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩]')),
+              LengthLimitingTextInputFormatter(10),
+            ],
+            prefixIcon: const Icon(
+              Icons.phone_outlined,
+              size: 20,
+              color: AuthColors.blue,
+            ),
+            onChanged: (_) {
+              if (_inlineError != null) {
+                setState(() {
+                  _inlineError = null;
+                  _errorKind = null;
+                });
+              }
+            },
+            onSubmitted: (_) => _sendVerificationCode(),
+          ),
+          if (_inlineError != null) ...[
+            const SizedBox(height: 12),
+            InlineAuthMessage(message: _inlineError!),
+          ],
+          const SizedBox(height: 15),
+          AuthPrimaryButton(
+            label: _buttonLabel,
+            loading: _isLoading,
+            onPressed: _onPrimaryPressed,
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const EmailLoginScreenAli()),
+            ),
+            child: const Text(
+              'الدخول بالبريد الإلكتروني',
+              style: TextStyle(
+                color: AuthColors.blue,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const Row(
+            children: [
+              Expanded(child: Divider(color: AuthColors.border)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14),
+                child: Text(
+                  'أو',
+                  style: TextStyle(
+                    color: AuthColors.secondary,
+                    fontSize: 13,
                   ),
                 ),
               ),
+              Expanded(child: Divider(color: AuthColors.border)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          AuthPrimaryButton(
+            label: 'الدخول عبر نفاذ',
+            backgroundColor: AuthColors.green,
+            onPressed: () => showAuthInformationDialog(
+              context,
+              title: 'نفاذ غير متاح حاليًا',
+              message:
+                  'خدمة تسجيل الدخول عبر نفاذ لا تعمل في النسخة التجريبية من سير. يمكنك الدخول باستخدام رقم الجوال أو البريد الإلكتروني.',
+            ),
+          ),
+          const SizedBox(height: 15),
+          const Text(
+            'بمتابعتك، أنت توافق على سياسة الخصوصية وشروط الاستخدام',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AuthColors.secondary,
+              fontSize: 10,
+              height: 1.6,
             ),
           ),
         ],
       ),
     );
   }
-
-  // =========================================================
-  // LOGO
-  // =========================================================
-
-  Widget _buildLogo() {
-    return SizedBox(
-      height: 51,
-      width: double.infinity,
-      child: Center(
-        child: Image.asset(
-          'assets/branding/seer_logo_inverse.png',
-          width: 200.6,
-          height: 51,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-
-  // =========================================================
-  // HEADER
-  // =========================================================
-
-  Widget _buildWelcomeSection() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'مرحبًا بك',
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            height: 1.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: 6),
-        Text(
-          'أدخل رقم جوالك للوصول إلى حسابك بأمان',
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            color: _secondaryText,
-            fontSize: 14,
-            height: 1.7,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // =========================================================
-  // PHONE FIELD
-  // =========================================================
-
-  Widget _buildPhoneField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'رقم الجوال',
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        SizedBox(
-          height: 40,
-          child: TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.done,
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.center,
-            onSubmitted: (_) {
-              if (!_isLoading) {
-                _sendVerificationCode();
-              }
-            },
-            style: const TextStyle(
-              color: _navy,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              hintText: '05X XXX XXXX',
-              hintStyle: const TextStyle(
-                color: _secondaryText,
-                fontSize: 11,
-                fontWeight: FontWeight.w400,
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 11,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _fieldBorder, width: 0.7),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _fieldBorder, width: 0.7),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _gold, width: 1.5),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // =========================================================
-  // OTP BUTTON
-  // =========================================================
-
-  Widget _buildSendOtpButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 40,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _sendVerificationCode,
-        style: ElevatedButton.styleFrom(
-          elevation: 0,
-          backgroundColor: _gold,
-          disabledBackgroundColor: _gold.withValues(alpha: 0.55),
-          foregroundColor: _navy,
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: _navy),
-              )
-            : const Text(
-                'إرسال رمز التحقق',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-      ),
-    );
-  }
-
-  // =========================================================
-  // EMAIL BUTTON
-  // =========================================================
-
-  Widget _buildEmailLoginButton() {
-    return SizedBox(
-      height: 28,
-      child: TextButton(
-        onPressed: _openEmailLogin,
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.zero,
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          foregroundColor: _blue,
-        ),
-        child: const Text(
-          'الدخول بالبريد الإلكتروني',
-          style: TextStyle(
-            color: _blue,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            decoration: TextDecoration.underline,
-            decorationColor: _blue,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // =========================================================
-  // DIVIDER
-  // =========================================================
-
-  Widget _buildDivider() {
-    return const Row(
-      children: [
-        Expanded(child: Divider(color: _border, height: 1, thickness: 1)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            'أو',
-            style: TextStyle(
-              color: _secondaryText,
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-        Expanded(child: Divider(color: _border, height: 1, thickness: 1)),
-      ],
-    );
-  }
-
-  // =========================================================
-  // NAFATH BUTTON
-  // =========================================================
-
-  Widget _buildNafathButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 35,
-      child: OutlinedButton(
-        onPressed: _showNafathMessage,
-        style: OutlinedButton.styleFrom(
-          elevation: 0,
-          backgroundColor: _green,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.zero,
-          side: const BorderSide(color: _border, width: 1),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: const Text(
-          'الدخول عبر نفاذ',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  // =========================================================
-  // TERMS
-  // =========================================================
-
-  Widget _buildTerms() {
-    return const Text(
-      'بمتابعتك أنت توافق على سياسة الخصوصية وشروط الاستخدام',
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        color: _secondaryText,
-        fontSize: 11,
-        height: 1.7,
-        fontWeight: FontWeight.w400,
-      ),
-    );
-  }
 }
+
+enum _PhoneErrorKind { invalid, unlinked, wrongRole, other }
