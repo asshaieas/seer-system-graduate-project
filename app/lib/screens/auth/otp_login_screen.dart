@@ -15,8 +15,8 @@ enum OtpLoginResult {
   unavailable,
 }
 
-class OtpLoginScreenAli extends StatefulWidget {
-  const OtpLoginScreenAli({
+class OtpLoginScreen extends StatefulWidget {
+  const OtpLoginScreen({
     super.key,
     required this.phoneNumber,
     this.verificationId,
@@ -30,10 +30,10 @@ class OtpLoginScreenAli extends StatefulWidget {
   final ConfirmationResult? confirmationResult;
 
   @override
-  State<OtpLoginScreenAli> createState() => _OtpLoginScreenAliState();
+  State<OtpLoginScreen> createState() => _OtpLoginScreenState();
 }
 
-class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
+class _OtpLoginScreenState extends State<OtpLoginScreen> {
   final _controllers = List.generate(6, (_) => TextEditingController());
   final _focusNodes = List.generate(6, (_) => FocusNode());
 
@@ -128,8 +128,7 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
       switch (error.code) {
         case 'invalid-verification-code':
           setState(() {
-            _inlineError =
-                'رمز التحقق غير صحيح. راجع الأرقام وحاول مجددًا.';
+            _inlineError = 'رمز التحقق غير صحيح. راجع الأرقام وحاول مجددًا.';
             _errorKind = _OtpErrorKind.invalid;
           });
           break;
@@ -156,7 +155,8 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
   }
 
   Future<void> _resendOtp() async {
-    if (_isResending || (_remainingSeconds > 0 && _errorKind != _OtpErrorKind.expired)) {
+    if (_isResending ||
+        (_remainingSeconds > 0 && _errorKind != _OtpErrorKind.expired)) {
       return;
     }
 
@@ -168,8 +168,9 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
 
     try {
       if (kIsWeb) {
-        _confirmationResult = await FirebaseAuth.instance
-            .signInWithPhoneNumber(widget.phoneNumber);
+        _confirmationResult = await FirebaseAuth.instance.signInWithPhoneNumber(
+          widget.phoneNumber,
+        );
         _resetAfterResend();
       } else {
         await FirebaseAuth.instance.verifyPhoneNumber(
@@ -177,8 +178,9 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
           forceResendingToken: _resendToken,
           timeout: const Duration(seconds: 60),
           verificationCompleted: (credential) async {
-            final result =
-                await FirebaseAuth.instance.signInWithCredential(credential);
+            final result = await FirebaseAuth.instance.signInWithCredential(
+              credential,
+            );
             final user = result.user;
             if (user == null || !mounted) return;
             final failure = await openHomeForAuthenticatedUser(context, user);
@@ -213,8 +215,7 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
     return switch (error.code) {
       'too-many-requests' =>
         'توجد طلبات كثيرة لإرسال الرمز. انتظر قليلًا ثم حاول مجددًا.',
-      'network-request-failed' =>
-        'تعذر الاتصال بالشبكة. تحقق من الإنترنت.',
+      'network-request-failed' => 'تعذر الاتصال بالشبكة. تحقق من الإنترنت.',
       _ => 'تعذر إعادة إرسال الرمز. حاول مجددًا.',
     };
   }
@@ -300,8 +301,8 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
     final local = digits.startsWith('966')
         ? '0${digits.substring(3)}'
         : digits.startsWith('5')
-            ? '0$digits'
-            : digits;
+        ? '0$digits'
+        : digits;
 
     if (local.length == 10) {
       return '${local.substring(0, 3)} ${local.substring(3, 6)} ${local.substring(6)}';
@@ -316,10 +317,10 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
   }
 
   String get _buttonLabel => switch (_errorKind) {
-        _OtpErrorKind.invalid => 'إعادة المحاولة',
-        _OtpErrorKind.expired => 'إعادة إرسال رمز جديد',
-        _ => 'تأكيد رمز التحقق',
-      };
+    _OtpErrorKind.invalid => 'إعادة المحاولة',
+    _OtpErrorKind.expired => 'إعادة إرسال رمز جديد',
+    _ => 'تأكيد رمز التحقق',
+  };
 
   @override
   void dispose() {
@@ -477,8 +478,8 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
     final borderColor = hasError
         ? AuthColors.error
         : focused
-            ? AuthColors.blue
-            : AuthColors.border;
+        ? AuthColors.blue
+        : AuthColors.border;
 
     return SizedBox(
       width: 47,
@@ -487,8 +488,9 @@ class _OtpLoginScreenAliState extends State<OtpLoginScreenAli> {
         controller: _controllers[index],
         focusNode: _focusNodes[index],
         keyboardType: TextInputType.number,
-        textInputAction:
-            index == 5 ? TextInputAction.done : TextInputAction.next,
+        textInputAction: index == 5
+            ? TextInputAction.done
+            : TextInputAction.next,
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         textAlign: TextAlign.center,

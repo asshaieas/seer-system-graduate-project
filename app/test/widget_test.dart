@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:app/screens/auth/login_screen_ali.dart';
-import 'package:app/screens/auth/otp_login_screen_ali.dart';
+import 'package:app/screens/auth/login_screen.dart';
+import 'package:app/screens/auth/otp_login_screen.dart';
 
 void main() {
   testWidgets('SEER parent login renders the designed actions', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: LoginScreenAli()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
     expect(find.text('مرحبًا بك'), findsOneWidget);
     expect(find.text('إرسال رمز التحقق'), findsOneWidget);
@@ -21,9 +19,7 @@ void main() {
   testWidgets('invalid phone number is shown inline', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: LoginScreenAli()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
     await tester.tap(find.text('إرسال رمز التحقق'));
     await tester.pump();
@@ -38,9 +34,7 @@ void main() {
   testWidgets('English button opens a styled unavailable dialog', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: LoginScreenAli()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
     await tester.tap(find.text('EN'));
     await tester.pumpAndSettle();
@@ -53,9 +47,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: OtpLoginScreenAli(phoneNumber: '+966551234567'),
-      ),
+      const MaterialApp(home: OtpLoginScreen(phoneNumber: '+966551234567')),
     );
 
     expect(find.text('أرسلنا كود التحقق إلى رقم'), findsOneWidget);

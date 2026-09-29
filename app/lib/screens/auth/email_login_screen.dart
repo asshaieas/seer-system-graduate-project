@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'auth_access.dart';
 import 'auth_ui.dart';
 
-class EmailLoginScreenAli extends StatefulWidget {
-  const EmailLoginScreenAli({super.key});
+class EmailLoginScreen extends StatefulWidget {
+  const EmailLoginScreen({super.key});
 
   @override
-  State<EmailLoginScreenAli> createState() => _EmailLoginScreenAliState();
+  State<EmailLoginScreen> createState() => _EmailLoginScreenState();
 }
 
-class _EmailLoginScreenAliState extends State<EmailLoginScreenAli> {
+class _EmailLoginScreenState extends State<EmailLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -216,7 +216,9 @@ class _EmailLoginScreenAliState extends State<EmailLoginScreenAli> {
               color: AuthColors.secondary,
             ),
             prefixIcon: IconButton(
-              tooltip: _obscurePassword ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
+              tooltip: _obscurePassword
+                  ? 'إظهار كلمة المرور'
+                  : 'إخفاء كلمة المرور',
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
               icon: Icon(
