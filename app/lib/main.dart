@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'firebase_options.dart';
-import 'screens/auth/login_screen_ali.dart';
-
-// import 'screens/auth/login_screen.dart';
+import 'screens/auth/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +66,7 @@ class SeerApp extends StatelessWidget {
         ),
       ),
 
-      home: const LoginScreenAli(),
+      home: const LoginScreen(),
 
       // للرجوع للواجهة الأصلية:
       // home: const LoginScreen(),
